@@ -1,57 +1,35 @@
 import torch
 from torch.utils.data import Dataset, DataLoader
 from pathlib import Path
-import cv2
-
-
-def get_images_and_labels(dir_path):
-    '''
-    从图像数据集的根目录dir_path下获取所有类别的图像名列表和对应的标签名列表
-    :param dir_path: 图像数据集的根目录
-    :return: images_list, labels_list
-    '''
-    dir_path = Path(dir_path)
-    classes = []  # 类别名列表
-
-    for category in dir_path.iterdir():
-        if category.is_dir():
-            classes.append(category.name)
-    images_list = []  # 文件名列表
-    labels_list = []  # 标签列表
-
-    for index, name in enumerate(classes):
-        class_path = dir_path / name
-        if not class_path.is_dir():
-            continue
-        for img_path in class_path.glob('*.jpg'):
-            images_list.append(str(img_path))
-            labels_list.append(int(index))
-    return images_list, labels_list
+import os,glob, cv2
+from PIL import Image
+import numpy as np
 
 
 class MyDataset(Dataset):
     def __init__(self, dir_path, transform=None):
-        self.dir_path = dir_path    # 数据集根目录
         self.transform = transform
-        self.images, self.labels = get_images_and_labels(self.dir_path)
+        self.image_list= []
+        names=os.listdir(dir_path)
+        for file_name in names:
+            if file_name.endswith(".jpg"):
+                self.image_list.append(os.path.join(dir_path,file_name) )
 
     def __len__(self):
         # 返回数据集的数据数量
-        return len(self.images)
+        return len(self.image_list)
 
-    def __getitem__(self, index):
-        img_path = self.images[index]
-        label = self.labels[index]
-        img = cv2.imread(img_path)
-        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-        sample = {'image': img, 'label': label}
+    def __getitem__(self, idx):
+        img=Image.open(self.image_list[idx]).convert("RGB")
         if self.transform:
-            sample['image'] = self.transform(sample['image'])
-        return sample
+            img = self.transform(img)
+        image=[t.numpy() for t in img] 
+        image=np.array(image)
+        return image
 
 if __name__ == '__main__':
-    train_dataset = MyDataset(r"/git/segment_images")
+    train_dataset = MyDataset("/git/segment_images")
     num_samples=100
     dataloader = DataLoader(train_dataset, batch_size=16, shuffle=(num_samples is None),sampler=num_samples)
     for index, batch_data in enumerate(dataloader):
-        print(index, batch_data['image'].shape, batch_data['label'].shape)
+        print(index, batch_dat.shape)
