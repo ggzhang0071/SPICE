@@ -36,10 +36,8 @@ model_names = sorted(name for name in models.__dict__
     and callable(models.__dict__[name]))
 
 parser = argparse.ArgumentParser(description='PyTorch ImageNet Training')
-parser.add_argument('--data_type', default='stl10',
-                    help='path to dataset')
-parser.add_argument('--data', metavar='DIR', default='./datasets/stl10',
-                    help='path to dataset')
+parser.add_argument('--data_type', default='cifar10', help='path to dataset')
+parser.add_argument('--data', metavar='DIR', default='./datasets',help='path to dataset')
 parser.add_argument('--all', default=1, type=int,
                     help='1 denotes using both train and test data')
 parser.add_argument('--save_folder', metavar='DIR', default='./results/stl10/moco',
@@ -69,7 +67,7 @@ parser.add_argument('--wd', '--weight-decay', default=1e-4, type=float,
                     dest='weight_decay')
 parser.add_argument('--print-freq', default=10, type=int,
                     metavar='N', help='print frequency (default: 10)')
-parser.add_argument('--resume', default='./results/stl10/moco/checkpoint_last.pth.tar', type=str, metavar='PATH',
+parser.add_argument('--resume', default='none', type=str, metavar='PATH',
                     help='path to latest checkpoint (default: none)')
 parser.add_argument('--world-size', default=1, type=int,
                     help='number of nodes for distributed training')
@@ -83,7 +81,7 @@ parser.add_argument('--seed', default=None, type=int,
                     help='seed for initializing training. ')
 parser.add_argument('--gpu', default=None, type=int,
                     help='GPU id to use.')
-parser.add_argument('--multiprocessing-distributed', action='store_false',
+parser.add_argument('--multiprocessing_distributed', action='store_false', default=False,
                     help='Use multi-processing distributed training to launch '
                          'N processes per node, which has N GPUs. This is the '
                          'fastest way to use PyTorch for either single node or '
@@ -132,7 +130,7 @@ def main():
         args.world_size = int(os.environ["WORLD_SIZE"])
 
     args.distributed = args.world_size > 1 or args.multiprocessing_distributed
-
+    args.distributed=True
     ngpus_per_node = torch.cuda.device_count()
     if args.multiprocessing_distributed:
         # Since we have ngpus_per_node processes per node, the total world_size
@@ -140,7 +138,8 @@ def main():
         args.world_size = ngpus_per_node * args.world_size
         # Use torch.multiprocessing.spawn to launch distributed processes: the
         # main_worker process function
-        mp.spawn(main_worker, nprocs=ngpus_per_node, args=(ngpus_per_node, args))
+
+        mp.spawn(main_worker, nprocs=ngpus_per_node, args=(ngpus_per_node,))
     else:
         # Simply call main_worker function
         main_worker(args.gpu, ngpus_per_node, args)
@@ -269,11 +268,10 @@ def main_worker(gpu, ngpus_per_node, args):
             split = "train+test+unlabeled"
         else:
             split = "train+unlabeled"
-        train_dataset = STL10(args.data, split=split,
-                              transform=moco.loader.TwoCropsTransform(transforms.Compose(augmentation)))
+        train_dataset = STL10(args.data, split=split,transform=moco.loader.TwoCropsTransform(transforms.Compose(augmentation)),download=True)
     elif args.data_type == 'cifar10':
         train_dataset = CIFAR10(args.data, all=args.all,
-                                transform=moco.loader.TwoCropsTransform(transforms.Compose(augmentation)))
+                                transform=moco.loader.TwoCropsTransform(transforms.Compose(augmentation)),download=True)
     elif args.data_type == 'cifar100':
         train_dataset = CIFAR100(args.data, all=args.all,
                                  transform=moco.loader.TwoCropsTransform(transforms.Compose(augmentation)))
