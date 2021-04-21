@@ -32,7 +32,7 @@ from torch.utils.tensorboard import SummaryWriter
 import matplotlib.pyplot as plt
 from spice.utils.evaluation import calculate_acc, calculate_nmi, calculate_ari
 from spice.utils.load_model_weights import load_model_weights
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+os.environ["CUDA_VISIBLE_DEVICES"] = "0,1,2,3"
 
 
 model_names = sorted(name for name in models.__dict__
@@ -42,16 +42,14 @@ model_names = sorted(name for name in models.__dict__
 parser = argparse.ArgumentParser(description='PyTorch ImageNet Training')
 parser.add_argument(
     "--config-file",
-    default="./configs/stl10/embedding.py",
+    default="configs/kangqiang/embedding.py",
     metavar="FILE",
     help="path to config file",
     type=str,
 )
 
-
 def main():
     args = parser.parse_args()
-
     cfg = Config.fromfile(args.config_file)
     output_dir = cfg.results.output_dir
     if output_dir:
@@ -94,7 +92,6 @@ def main():
 
 def main_worker(gpu, ngpus_per_node, cfg):
     cfg.gpu = gpu
-
     # suppress printing if not master
     if cfg.multiprocessing_distributed and cfg.gpu != 0:
         def print_pass(*cfg):
@@ -115,7 +112,7 @@ def main_worker(gpu, ngpus_per_node, cfg):
                                 world_size=cfg.world_size, rank=cfg.rank)
     # create model
     model_sim = build_model_sim(cfg.model_sim)
-    print(model_sim)
+    #print(model_sim)
 
     if cfg.distributed:
         # For multiprocessing distributed, DistributedDataParallel constructor
@@ -131,6 +128,7 @@ def main_worker(gpu, ngpus_per_node, cfg):
             cfg.workers = int((cfg.workers + ngpus_per_node - 1) / ngpus_per_node)
             model_sim = torch.nn.parallel.DistributedDataParallel(model_sim, device_ids=[cfg.gpu])
         else:
+            #model_sim = nn.DataParallel(model_sim)
             model_sim.cuda()
             # DistributedDataParallel will divide and allocate batch_size to all
             # available GPUs if device_ids are not set
@@ -160,21 +158,22 @@ def main_worker(gpu, ngpus_per_node, cfg):
     pool = nn.AdaptiveAvgPool2d(1)
 
     feas_sim = []
-    for _, (images, _, labels, idx) in enumerate(val_loader):
-        images = images.to(cfg.gpu, non_blocking=True)
-        print(images.shape)
-        with torch.no_grad():
-            feas_sim_i = model_sim(images)
-            if len(feas_sim_i.shape) == 4:
-                feas_sim_i = pool(feas_sim_i)
-                feas_sim_i = torch.flatten(feas_sim_i, start_dim=1)
-            feas_sim_i = nn.functional.normalize(feas_sim_i, dim=1)
-            feas_sim.append(feas_sim_i.cpu())
+    with torch.no_grad():
+        for _, images in enumerate(val_loader):
+            images = images.to(cfg.gpu, non_blocking=True)
+            #images = images.cuda()
+            with torch.no_grad():
+                feas_sim_i = model_sim(images)
+                if len(feas_sim_i.shape) == 4:
+                    feas_sim_i = pool(feas_sim_i)
+                    feas_sim_i = torch.flatten(feas_sim_i, start_dim=1)
+                feas_sim_i = nn.functional.normalize(feas_sim_i, dim=1)
+                feas_sim.append(feas_sim_i.cpu())
 
-    feas_sim = torch.cat(feas_sim, dim=0)
-    feas_sim = feas_sim.numpy()
+        feas_sim = torch.cat(feas_sim, dim=0)
+        feas_sim = feas_sim.numpy()
 
-    np.save("{}/feas_moco_512_l2.npy".format(cfg.results.output_dir), feas_sim)
+        np.save("{}/feas_moco_512_l2.npy".format(cfg.results.output_dir), feas_sim)
 
 
 if __name__ == '__main__':

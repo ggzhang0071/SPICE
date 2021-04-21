@@ -7,3 +7,4 @@ pillow
 tensorboard
 jupyter
 jupyterlab
+matplotlib

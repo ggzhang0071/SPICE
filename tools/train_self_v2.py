@@ -43,12 +43,22 @@ parser.add_argument(
     type=str,
 )
 
+parser.add_argument(
+    "--gpu",
+    default=0,
+    help="gpu to use",
+    type=int,
+)
+
+
 
 def main():
     args = parser.parse_args()
     cfg = Config.fromfile(args.config_file)
 
-    os.environ["CUDA_VISIBLE_DEVICES"] = str(cfg.device_id)
+    #os.environ["CUDA_VISIBLE_DEVICES"] = str(cfg.device_id)
+    os.environ["CUDA_VISIBLE_DEVICES"] ="0,1,2,3"
+
 
     output_dir = cfg.results.output_dir
     if output_dir:
@@ -77,6 +87,7 @@ def main():
     cfg.distributed = cfg.world_size > 1 or cfg.multiprocessing_distributed
 
     ngpus_per_node = torch.cuda.device_count()
+    cfg.multiprocessing_distributed=False
     if cfg.multiprocessing_distributed:
         # Since we have ngpus_per_node processes per node, the total world_size
         # needs to be adjusted accordingly
@@ -100,8 +111,7 @@ def main_worker(gpu, ngpus_per_node, cfg):
     # suppress printing if not master
     if cfg.multiprocessing_distributed and cfg.gpu != 0:
         def print_pass(*cfg):
-            pass
-        builtins.print = print_pass
+            builtins.print = print_pass
 
     if cfg.gpu is not None:
         logger.info("Use GPU: {} for training".format(cfg.gpu))

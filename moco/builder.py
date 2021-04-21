@@ -23,6 +23,7 @@ class MoCo(nn.Module):
 
         # create the encoders
         # num_classes is the output fc dimension
+        # 这里为什么作为 encoder
         self.encoder_q = base_encoder(num_classes=dim, in_size=input_size)
         self.encoder_k = base_encoder(num_classes=dim, in_size=input_size)
 

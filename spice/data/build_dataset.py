@@ -4,15 +4,14 @@ from spice.data.stl10_embedding import STL10EMB
 from spice.data.cifar import CIFAR10, CIFAR20
 from spice.data.imagenet import ImageNetSubEmb, ImageNetSubEmbLMDB, TImageNetEmbLMDB
 from spice.data.npy import NPYEMB
-
+from dataset import kangqiangDataset
 
 def build_dataset(data_cfg):
     type = data_cfg.type
 
     dataset = None
 
-    train_trans1 = get_train_transformations(data_cfg.trans1)
-    train_trans2 = get_train_transformations(data_cfg.trans2)
+    train_trans = get_train_transformations(data_cfg.trans1)
 
     if type == "stl10":
         dataset = STL10(root=data_cfg.root_folder,
@@ -77,6 +76,11 @@ def build_dataset(data_cfg):
                                    embedding=data_cfg.embedding,
                                    transform1=train_trans1,
                                    transform2=train_trans2)
+    elif type=="kangqiang":
+        dataset = kangqiangDataset(dir_path=data_cfg.root_folder,
+                        split=data_cfg.split,
+                        show=data_cfg.show,
+                        transform=train_trans)
     else:
         assert TypeError
 

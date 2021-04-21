@@ -1,14 +1,14 @@
 model_name = "spice_self"
-pre_model = "./results/stl10/moco/checkpoint_0999.pth.tar"
+pre_model = "/git/results/kangqiang/checkpoint_last.pth.tar"
 embedding = "./results/stl10/embedding/feas_moco_512_l2.npy"
 resume = "./results/stl10/{}/checkpoint_last.pth.tar".format(model_name)
 model_type = "clusterresnet"
 num_head = 10
 num_workers = 4
-device_id = 0
+device_id = 4
 num_train = 5
 num_cluster = 10
-batch_size = 5000
+batch_size = 20000
 target_sub_batch_size = 100
 train_sub_batch_size = 128
 batch_size_test = 100
@@ -35,7 +35,7 @@ test_freq = 1
 
 data_train = dict(
     type="stl10_emb",
-    root_folder="./datasets/stl10",
+    root_folder="./datasets",
     embedding=embedding,
     split="train+test",
     ims_per_batch=batch_size,

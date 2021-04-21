@@ -3,7 +3,6 @@ import os
 import os.path
 import numpy as np
 from typing import Any, Callable, Optional, Tuple
-
 from torchvision.datasets.vision import VisionDataset
 from torchvision.datasets.utils import check_integrity, download_and_extract_archive, verify_str_arg
 

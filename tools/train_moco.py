@@ -25,7 +25,7 @@ import torchvision.models as models
 from spice.model.feature_modules.cluster_resnet import ClusterResNet
 from spice.model.feature_modules.resnet_stl import resnet18
 from spice.model.feature_modules.resnet_cifar import resnet18_cifar
-
+from dataset import kangqiangDataset
 import moco.loader
 import moco.builder
 from moco.stl10 import STL10
@@ -34,10 +34,11 @@ from moco.cifar import CIFAR10, CIFAR100
 model_names = sorted(name for name in models.__dict__
     if name.islower() and not name.startswith("__")
     and callable(models.__dict__[name]))
+os.environ["CUDA_VISIBLE_DEVICES"] = "0,1,2,3"
 
 parser = argparse.ArgumentParser(description='PyTorch ImageNet Training')
-parser.add_argument('--data_type', default='cifar10', help='path to dataset')
-parser.add_argument('--data', metavar='DIR', default='./datasets',help='path to dataset')
+parser.add_argument('--data_type', default='stl10', help='path to dataset')
+parser.add_argument('--data', metavar='DIR', default='/git/datasets',help='path to dataset')
 parser.add_argument('--all', default=1, type=int,
                     help='1 denotes using both train and test data')
 parser.add_argument('--save_folder', metavar='DIR', default='./results/stl10/moco',
@@ -108,7 +109,6 @@ parser.add_argument('--cos', action='store_false',
 
 def main():
     args = parser.parse_args()
-
     if not os.path.exists(args.save_folder):
         os.makedirs(args.save_folder)
 
@@ -176,10 +176,7 @@ def main_worker(gpu, ngpus_per_node, args):
         base_model = resnet18_cifar
     else:
         base_model = models.__dict__[args.arch]
-    model = moco.builder.MoCo(
-        base_model,
-        args.moco_dim, args.moco_k, args.moco_m, args.moco_t, args.mlp)
-    print(model)
+    model = moco.builder.MoCo(base_model,args.moco_dim, args.moco_k, args.moco_m, args.moco_t, args.mlp)
 
     if args.distributed:
         # For multiprocessing distributed, DistributedDataParallel constructor
@@ -193,12 +190,16 @@ def main_worker(gpu, ngpus_per_node, args):
             # ourselves based on the total number of GPUs we have
             args.batch_size = int(args.batch_size / ngpus_per_node)
             args.workers = int((args.workers + ngpus_per_node - 1) / ngpus_per_node)
-            model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[args.gpu])
+            #model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[args.gpu],find_unused_parameters=True)
+            model = torch.nn.DataParallel(model)
+
         else:
             model.cuda()
             # DistributedDataParallel will divide and allocate batch_size to all
             # available GPUs if device_ids are not set
-            model = torch.nn.parallel.DistributedDataParallel(model)
+            #model = torch.nn.parallel.DistributedDataParallel(model,find_unused_parameters=True)
+            model = torch.nn.DataParallel(model)
+
     elif args.gpu is not None:
         torch.cuda.set_device(args.gpu)
         model = model.cuda(args.gpu)
@@ -240,7 +241,6 @@ def main_worker(gpu, ngpus_per_node, args):
     normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                      std=[0.229, 0.224, 0.225])
     if args.aug_plus:
-        # MoCo v2's aug: similar to SimCLR https://arxiv.org/abs/2002.05709
         augmentation = [
             transforms.RandomResizedCrop(96, scale=(0.2, 1.)),
             transforms.RandomApply([
@@ -275,6 +275,8 @@ def main_worker(gpu, ngpus_per_node, args):
     elif args.data_type == 'cifar100':
         train_dataset = CIFAR100(args.data, all=args.all,
                                  transform=moco.loader.TwoCropsTransform(transforms.Compose(augmentation)))
+    elif args.data_type=="kangqiang_segment_results":
+        train_dataset=kangqiangDataset(args.data, transform=moco.loader.TwoCropsTransform(transforms.Compose(augmentation)))
     else:
         raise TypeError
 
@@ -303,7 +305,7 @@ def main_worker(gpu, ngpus_per_node, args):
                     'arch': args.arch,
                     'state_dict': model.state_dict(),
                     'optimizer' : optimizer.state_dict(),
-                }, is_best=False, filename='{}/checkpoint_{:04d}.pth.tar'.format(args.save_folder, epoch))
+                }, is_best=False, filename='{}/aug_plus{:04d}.pth.tar'.format(args.save_folder, epoch))
 
                 save_checkpoint({
                     'epoch': epoch + 1,
@@ -336,7 +338,8 @@ def train(train_loader, model, criterion, optimizer, epoch, args):
     model.train()
 
     end = time.time()
-    for i, (images, _) in enumerate(train_loader):
+    #for i, (images,_) in enumerate(train_loader):
+    for i, images in enumerate(train_loader):
         # measure data loading time
         data_time.update(time.time() - end)
 
@@ -345,6 +348,7 @@ def train(train_loader, model, criterion, optimizer, epoch, args):
             images[1] = images[1].cuda(args.gpu, non_blocking=True)
 
         # compute output
+        images=images.cuda()
         output, target = model(im_q=images[0], im_k=images[1])
         loss = criterion(output, target)
 
