@@ -25,7 +25,7 @@ import torchvision.models as models
 from spice.model.feature_modules.cluster_resnet import ClusterResNet
 from spice.model.feature_modules.resnet_stl import resnet18
 from spice.model.feature_modules.resnet_cifar import resnet18_cifar
-from dataset import kangqiangDataset
+from dataset import kangqiang
 import moco.loader
 import moco.builder
 from moco.stl10 import STL10
@@ -34,21 +34,20 @@ from moco.cifar import CIFAR10, CIFAR100
 model_names = sorted(name for name in models.__dict__
     if name.islower() and not name.startswith("__")
     and callable(models.__dict__[name]))
-os.environ["CUDA_VISIBLE_DEVICES"] = "0,1,2,3"
 
 parser = argparse.ArgumentParser(description='PyTorch ImageNet Training')
-parser.add_argument('--data_type', default='stl10', help='path to dataset')
-parser.add_argument('--data', metavar='DIR', default='/git/datasets',help='path to dataset')
+parser.add_argument('--data_type', default='kangqiang_segment_results', help='path to dataset')
+parser.add_argument('--data', metavar='DIR', default='/git/segment_images',help='path to dataset')
 parser.add_argument('--all', default=1, type=int,
                     help='1 denotes using both train and test data')
-parser.add_argument('--save_folder', metavar='DIR', default='./results/stl10/moco',
+parser.add_argument('--save_folder', metavar='DIR', default='/git/results/kangqiang',
                     help='path to dataset')
 parser.add_argument('--save-freq', default=1, type=int, metavar='N',
                     help='frequency of saving model')
 parser.add_argument('--arch', metavar='ARCH', default='clusterresnet')
 parser.add_argument('--workers', default=4, type=int, metavar='N',
                     help='number of data loading workers (default: 32)')
-parser.add_argument('--epochs', default=1000, type=int, metavar='N',
+parser.add_argument('--epochs', default=1, type=int, metavar='N',
                     help='number of total epochs to run')
 parser.add_argument('--start-epoch', default=0, type=int, metavar='N',
                     help='manual epoch number (useful on restarts)')
@@ -82,7 +81,7 @@ parser.add_argument('--seed', default=None, type=int,
                     help='seed for initializing training. ')
 parser.add_argument('--gpu', default=None, type=int,
                     help='GPU id to use.')
-parser.add_argument('--multiprocessing_distributed', action='store_false', default=False,
+parser.add_argument('--multiprocessing_distributed', action='store_false', default=True,
                     help='Use multi-processing distributed training to launch '
                          'N processes per node, which has N GPUs. This is the '
                          'fastest way to use PyTorch for either single node or '
@@ -130,7 +129,6 @@ def main():
         args.world_size = int(os.environ["WORLD_SIZE"])
 
     args.distributed = args.world_size > 1 or args.multiprocessing_distributed
-    args.distributed=True
     ngpus_per_node = torch.cuda.device_count()
     if args.multiprocessing_distributed:
         # Since we have ngpus_per_node processes per node, the total world_size
@@ -139,7 +137,7 @@ def main():
         # Use torch.multiprocessing.spawn to launch distributed processes: the
         # main_worker process function
 
-        mp.spawn(main_worker, nprocs=ngpus_per_node, args=(ngpus_per_node,))
+        mp.spawn(main_worker, nprocs=ngpus_per_node, args=(ngpus_per_node,args))
     else:
         # Simply call main_worker function
         main_worker(args.gpu, ngpus_per_node, args)
@@ -190,15 +188,13 @@ def main_worker(gpu, ngpus_per_node, args):
             # ourselves based on the total number of GPUs we have
             args.batch_size = int(args.batch_size / ngpus_per_node)
             args.workers = int((args.workers + ngpus_per_node - 1) / ngpus_per_node)
-            #model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[args.gpu],find_unused_parameters=True)
-            model = torch.nn.DataParallel(model)
+            model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[args.gpu],find_unused_parameters=True)
 
         else:
             model.cuda()
             # DistributedDataParallel will divide and allocate batch_size to all
             # available GPUs if device_ids are not set
-            #model = torch.nn.parallel.DistributedDataParallel(model,find_unused_parameters=True)
-            model = torch.nn.DataParallel(model)
+            model = torch.nn.parallel.DistributedDataParallel(model,find_unused_parameters=True)
 
     elif args.gpu is not None:
         torch.cuda.set_device(args.gpu)
@@ -276,7 +272,7 @@ def main_worker(gpu, ngpus_per_node, args):
         train_dataset = CIFAR100(args.data, all=args.all,
                                  transform=moco.loader.TwoCropsTransform(transforms.Compose(augmentation)))
     elif args.data_type=="kangqiang_segment_results":
-        train_dataset=kangqiangDataset(args.data, transform=moco.loader.TwoCropsTransform(transforms.Compose(augmentation)))
+        train_dataset=kangqiang(args.data, transform=moco.loader.TwoCropsTransform(transforms.Compose(augmentation)))
     else:
         raise TypeError
 
@@ -305,7 +301,7 @@ def main_worker(gpu, ngpus_per_node, args):
                     'arch': args.arch,
                     'state_dict': model.state_dict(),
                     'optimizer' : optimizer.state_dict(),
-                }, is_best=False, filename='{}/aug_plus{:04d}.pth.tar'.format(args.save_folder, epoch))
+                }, is_best=False, filename='{}/checkpoint_{:04d}.pth.tar'.format(args.save_folder, epoch))
 
                 save_checkpoint({
                     'epoch': epoch + 1,
@@ -348,7 +344,6 @@ def train(train_loader, model, criterion, optimizer, epoch, args):
             images[1] = images[1].cuda(args.gpu, non_blocking=True)
 
         # compute output
-        images=images.cuda()
         output, target = model(im_q=images[0], im_k=images[1])
         loss = criterion(output, target)
 

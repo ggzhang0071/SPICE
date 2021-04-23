@@ -36,8 +36,8 @@ model_names = sorted(name for name in models.__dict__
 
 parser = argparse.ArgumentParser(description='PyTorch ImageNet Training')
 parser.add_argument(
-    "--config-file",
-    default="./configs/stl10/spice_self.py",
+    "--config_file",
+    default="./configs/kangqiang/spice_self.py",
     metavar="FILE",
     help="path to config file",
     type=str,

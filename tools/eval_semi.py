@@ -70,7 +70,7 @@ def calculate_ari(predict_labels, true_labels):
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument('--load_path', type=str, default='./model_zoo/model_stl10.pth')
+    parser.add_argument('--load_path', type=str, default='./model_zoo/model_kangqiang.pth')
     parser.add_argument('--scores_path', type=str, default=None)
     parser.add_argument('--use_train_model', action='store_true')
 

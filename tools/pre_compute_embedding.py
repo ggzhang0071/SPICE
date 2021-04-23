@@ -161,7 +161,6 @@ def main_worker(gpu, ngpus_per_node, cfg):
     with torch.no_grad():
         for _, images in enumerate(val_loader):
             images = images.to(cfg.gpu, non_blocking=True)
-            #images = images.cuda()
             with torch.no_grad():
                 feas_sim_i = model_sim(images)
                 if len(feas_sim_i.shape) == 4:

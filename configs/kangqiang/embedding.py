@@ -1,6 +1,5 @@
-current_epoch="last"
 model_name = "embedding"
-weight="/git/results/kangqiang/checkpoint_{}.pth.tar".format(current_epoch)
+weight="/git/results/kangqiang/checkpoint_0999.pth.tar"
 model_type = "clusterresnet"
 device = 0
 num_cluster = 10

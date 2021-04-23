@@ -41,14 +41,14 @@ model_names = sorted(name for name in models.__dict__
 parser = argparse.ArgumentParser(description='PyTorch ImageNet Training')
 parser.add_argument(
     "--config-file",
-    default="./configs/stl10/eval.py",
+    default="./configs/kangqiang/eval.py",
     metavar="FILE",
     help="path to config file",
     type=str,
 )
 parser.add_argument(
     "--weight",
-    default="./model_zoo/self_model_stl10.pth.tar",
+    default="./model_zoo/ .pth.tar",
     metavar="FILE",
     help="path to weight file",
     type=str,
@@ -65,7 +65,7 @@ parser.add_argument(
 )
 parser.add_argument(
     "--embedding",
-    default="./results/stl10/embedding/feas_moco_512_l2.npy",
+    default="/git/results/kangqiang/embedding/feas_moco_512_l2.npy",
     type=str,
 )
 

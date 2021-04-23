@@ -29,6 +29,10 @@ from spice.utils.logger import setup_logger
 import logging
 from spice.utils.comm import get_rank
 import numpy as np
+import sys
+sys.path.append("spice/data/stl10_embedding.py")
+sys.path.append(os.path.join(os.getcwd(),"project_cameo"))
+
 
 model_names = sorted(name for name in models.__dict__
     if name.islower() and not name.startswith("__")
@@ -36,29 +40,17 @@ model_names = sorted(name for name in models.__dict__
 
 parser = argparse.ArgumentParser(description='PyTorch ImageNet Training')
 parser.add_argument(
-    "--config-file",
-    default="./configs/stl10/spice_self.py",
+    "--config_file",
+    default="./configs/kangqiang/spice_self.py",
     metavar="FILE",
     help="path to config file",
     type=str,
 )
 
-parser.add_argument(
-    "--gpu",
-    default=0,
-    help="gpu to use",
-    type=int,
-)
-
-
 
 def main():
     args = parser.parse_args()
     cfg = Config.fromfile(args.config_file)
-
-    #os.environ["CUDA_VISIBLE_DEVICES"] = str(cfg.device_id)
-    os.environ["CUDA_VISIBLE_DEVICES"] ="0,1,2,3"
-
 
     output_dir = cfg.results.output_dir
     if output_dir:
@@ -87,6 +79,9 @@ def main():
     cfg.distributed = cfg.world_size > 1 or cfg.multiprocessing_distributed
 
     ngpus_per_node = torch.cuda.device_count()
+    ## tmp
+    #cfg.multiprocessing_distributed=False
+    args.gpu=2
     cfg.multiprocessing_distributed=False
     if cfg.multiprocessing_distributed:
         # Since we have ngpus_per_node processes per node, the total world_size
@@ -111,7 +106,8 @@ def main_worker(gpu, ngpus_per_node, cfg):
     # suppress printing if not master
     if cfg.multiprocessing_distributed and cfg.gpu != 0:
         def print_pass(*cfg):
-            builtins.print = print_pass
+            pass
+        builtins.print = print_pass
 
     if cfg.gpu is not None:
         logger.info("Use GPU: {} for training".format(cfg.gpu))
@@ -127,8 +123,8 @@ def main_worker(gpu, ngpus_per_node, cfg):
                                 world_size=cfg.world_size, rank=cfg.rank)
     # create model
     model = Sim2Sem(**cfg.model)
-    logger.info(model)
-
+    #logger.info(model)
+    cfg.distributed=False
     if cfg.distributed:
         # For multiprocessing distributed, DistributedDataParallel constructor
         # should always set the single device scope, otherwise,
@@ -136,22 +132,25 @@ def main_worker(gpu, ngpus_per_node, cfg):
         if cfg.gpu is not None:
             torch.cuda.set_device(cfg.gpu)
             model.cuda(cfg.gpu)
+            #model.cuda()
             # When using a single GPU per process and per
             # DistributedDataParallel, we need to divide the batch size
             # ourselves based on the total number of GPUs we have
             cfg.batch_size = int(cfg.batch_size / ngpus_per_node)
             cfg.workers = int((cfg.workers + ngpus_per_node - 1) / ngpus_per_node)
             model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[cfg.gpu])
+            model=model.cuda()
         else:
             model.cuda()
             # DistributedDataParallel will divide and allocate batch_size to all
             # available GPUs if device_ids are not set
             model = torch.nn.parallel.DistributedDataParallel(model)
     elif cfg.gpu is not None:
-        torch.cuda.set_device(cfg.gpu)
-        model = model.cuda(cfg.gpu)
+        #torch.cuda.set_device(cfg.gpu)
+        #model = model.cuda(cfg.gpu)
+        model = torch.nn.DataParallel(model)
         # comment out the following line for debugging
-        raise NotImplementedError("Only DistributedDataParallel is supported.")
+        #raise NotImplementedError("Only DistributedDataParallel is supported.")
     else:
         # AllGather implementation (batch shuffle, queue update, etc.) in
         # this code only supports DistributedDataParallel.
@@ -257,7 +256,7 @@ def main_worker(gpu, ngpus_per_node, cfg):
                 scores_all.append([])
 
             for _, (images, _, embs, labels, idx) in enumerate(val_loader):
-                images = images.to(cfg.gpu, non_blocking=True)
+                images = images.to(cfg.gpu)
                 with torch.no_grad():
                     scores = model(images, forward_type="sem")
 
@@ -273,7 +272,7 @@ def main_worker(gpu, ngpus_per_node, cfg):
 
             gt_labels = torch.cat(gt_labels).long().cpu().numpy()
             feas_sim = torch.cat(feas_sim, dim=0)
-            feas_sim = feas_sim.to(cfg.gpu, non_blocking=True)
+            feas_sim = feas_sim.to(cfg.gpu)
             losses = []
 
             for h in range(num_heads):
@@ -405,7 +404,7 @@ def train(train_loader, model, optimizer, epoch, cfg):
         images_trans_l = []
         feas_sim = []
 
-        for _, (images_ori_l_batch, images_trans_l_batch, feas_sim_batch, _, idx_l_batch) in enumerate(train_loader):
+        for _, (images_ori_l_batch, images_trans_l_batch, feas_sim_batch) in enumerate(train_loader):
             # measure data loading time
             data_time.update(time.time() - end)
             # print(images_ori_l_batch.shape)
@@ -413,8 +412,13 @@ def train(train_loader, model, optimizer, epoch, cfg):
             # Generate ground truth.
 
             # Select samples and estimate the ground-truth relationship between samples.
-            images_ori_l_batch = images_ori_l_batch.to(cfg.gpu, non_blocking=True)
+            #images_ori_l_batch = images_ori_l_batch.to(cfg.gpu, non_blocking=True)
+        
+            images_ori_l_batch = images_ori_l_batch.to(f"cuda:{model.device_ids[0]}")
+               
+
             with torch.no_grad():
+                model.cuda()
                 scores_nl = model(images_ori_l_batch, forward_type="sem")
 
             assert num_heads == len(scores_nl)
@@ -425,9 +429,9 @@ def train(train_loader, model, optimizer, epoch, cfg):
             images_trans_l.append(images_trans_l_batch)
             feas_sim.append(feas_sim_batch)
 
-            if len(feas_sim) >= iters_end:
+            """if len(feas_sim) >= iters_end:
                 train_loader.sampler.set_epoch(train_loader.sampler.epoch + 1)
-                break
+                break"""
 
         for h in range(num_heads):
             scores[h] = torch.cat(scores[h], dim=0)
@@ -435,8 +439,9 @@ def train(train_loader, model, optimizer, epoch, cfg):
         images_trans_l = torch.cat(images_trans_l)
         feas_sim = torch.cat(feas_sim)
 
-        feas_sim = feas_sim.to(cfg.gpu).to(torch.float32)
-
+        feas_sim = feas_sim.to(f'cuda:{model.device_ids[0]}').to(torch.float32)
+            
+        model=model.cuda()
         idx_select, gt_cluster_labels = model(feas_sim=feas_sim, scores=scores, epoch=epoch, forward_type="sim2sem")
 
         images_trans = []
@@ -466,8 +471,12 @@ def train(train_loader, model, optimizer, epoch, cfg):
                 targets_i = []
 
                 for h in range(num_heads):
-                    imgs_i.append(images_trans[h][img_idx_i, :, :, :].to(cfg.gpu, non_blocking=True))
-                    targets_i.append(gt_cluster_labels[h][img_idx_i].to(cfg.gpu, non_blocking=True))
+                    if torch.cuda.is_available():
+                        imgs_i.append(images_trans[h][img_idx_i, :, :, :].to(f"cuda:{model.device_ids[0]}"))
+                        targets_i.append(gt_cluster_labels[h][img_idx_i].to(f"cuda:{model.device_ids[0]}"))
+                    else:
+                        imgs_i.append(images_trans[h][img_idx_i, :, :, :])
+                        targets_i.append(gt_cluster_labels[h][img_idx_i])
 
                 loss_dict = model(imgs_i, target=targets_i, forward_type="loss")
 
@@ -550,4 +559,5 @@ def adjust_learning_rate(optimizer, epoch, args):
 
 
 if __name__ == '__main__':
+    os.environ["CUDA_VISIBLE_DEVICES"] = "1,2,3"
     main()

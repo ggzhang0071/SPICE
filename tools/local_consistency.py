@@ -38,15 +38,15 @@ model_names = sorted(name for name in models.__dict__
 
 parser = argparse.ArgumentParser(description='PyTorch ImageNet Training')
 parser.add_argument(
-    "--config-file",
-    default="./configs/stl10/eval.py",
+    "--config_file",
+    default="./configs/kangqiang/eval.py",
     metavar="FILE",
     help="path to config file",
     type=str,
 )
 parser.add_argument(
     "--embedding",
-    default="./results/stl10/embedding/feas_moco_512_l2.npy",
+    default="/git/results/kangqiang/embedding/feas_moco_512_l2.npy",
     type=str,
 )
 
@@ -153,6 +153,14 @@ def main_worker(gpu, ngpus_per_node, cfg):
         # AllGather implementation (batch shuffle, queue update, etc.) in
         # this code only supports DistributedDataParallel.
         raise NotImplementedError("Only DistributedDataParallel is supported.")
+    if cfg.gpu is None:
+        checkpoint = torch.load(cfg.model.pretrained)
+    else:
+        # Map model to be loaded to specified single gpu.
+        loc = 'cuda:{}'.format(cfg.model.pretrained)
+        checkpoint = torch.load(cfg.resume, map_location=loc)
+        model.load_state_dict(checkpoint['state_dict'])
+        
 
     state_dict = torch.load(cfg.model.pretrained)
     if 'state_dict' in state_dict.keys():

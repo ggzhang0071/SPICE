@@ -1,7 +1,8 @@
 model_name = "spice_self"
-pre_model = "./results/stl10/moco/checkpoint_0999.pth.tar"
-embedding = "./results/stl10/embedding/feas_moco_512_l2.npy"
-resume = "./results/stl10/{}/checkpoint_last.pth.tar".format(model_name)
+pre_model = "/git/results/kangqiang/checkpoint_0999.pth.tar"
+embedding = "/git/results/kangqiang/embedding/feas_moco_512_l2.npy"
+resume = "/git/results/kangqiang/{}/checkpoint_last.pth.tar".format(model_name)
+
 model_type = "clusterresnet"
 num_head = 10
 num_workers = 4
@@ -34,8 +35,8 @@ print_freq = 1
 test_freq = 1
 
 data_train = dict(
-    type="stl10_emb",
-    root_folder="./datasets/stl10",
+    type="kangqiang_emb",
+    root_folder="/git/segment_images",
     embedding=embedding,
     split="train+test",
     ims_per_batch=batch_size,
@@ -63,8 +64,8 @@ data_train = dict(
 )
 
 data_test = dict(
-    type="stl10_emb",
-    root_folder="./datasets/stl10",
+    type="kangqiang_emb",
+    root_folder="/git/segment_images",
     embedding=embedding,
     split="train+test",
     shuffle=False,
@@ -129,5 +130,5 @@ solver = dict(
 )
 
 results = dict(
-    output_dir="./results/stl10/{}".format(model_name),
+    output_dir="/git/results/kangqiang/{}".format(model_name),
 )
