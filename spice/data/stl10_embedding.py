@@ -60,10 +60,10 @@ class STL10EMB(CIFAR10):
         if download:
             self.download()
 
-        if not self._check_integrity():
+        """if not self._check_integrity():
             raise RuntimeError(
                 'Dataset not found or corrupted. '
-                'You can use download=True to download it')
+                'You can use download=True to download it')"""
 
         # now load the picked numpy arrays
         if self.split == 'train':
@@ -168,6 +168,7 @@ class STL10EMB(CIFAR10):
             images = np.transpose(images, (0, 1, 3, 2))
 
         return images, labels
+   
 
     def __repr__(self):
         fmt_str = 'Dataset ' + self.__class__.__name__ + '\n'

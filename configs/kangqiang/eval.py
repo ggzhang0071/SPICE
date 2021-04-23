@@ -1,6 +1,7 @@
 model_name = "eval"
 #weight = './model_zoo/self_model_kangqiang.pth.tar'
-weight="/git/results/kangqiang/checkpoint_0999.pth.tar"
+#weight="/git/results/kangqiang/checkpoint_0999.pth.tar"
+weight="/git/results/kangqiang/spice_self/checkpoint_last.pth.tar"
 model_type = "clusterresnet"
 device_id = 0
 num_cluster = 10
@@ -19,6 +20,7 @@ multiprocessing_distributed = True
 data_test = dict(
     type="kangqiang_emb",
     root_folder="/git/segment_images",
+    test_image_list="/git/assets/kangqiang_dataset_train.txt",
     embedding=None,
     split="train+test",
     shuffle=False,

@@ -5,7 +5,6 @@ import torch
 
 
 class Sim2Sem(nn.Module):
-
     def __init__(self, feature, head, freeze_conv=False, **kwargs):
         super(Sim2Sem, self).__init__()
         self.feature_module = build_feature_module(feature)
@@ -22,6 +21,7 @@ class Sim2Sem(nn.Module):
                 # for image in images:
                 #     fea.append(self.feature_module(image))
                 num_heads = len(images)
+                print(images)
                 num_each = images[0].shape[0]
                 image = torch.cat(images, dim=0)
                 fea_all = self.feature_module(image)

@@ -173,8 +173,8 @@ def main_worker(gpu, ngpus_per_node, cfg):
                 checkpoint = torch.load(cfg.resume)
             else:
                 # Map model to be loaded to specified single gpu.
-                loc = 'cuda:{}'.format(cfg.gpu)
-                checkpoint = torch.load(cfg.resume, map_location=loc)
+                #loc = 'cuda:{}'.format(cfg.gpu)
+                checkpoint = torch.load(cfg.resume, map_location="cuda:0")
             cfg.start_epoch = checkpoint['epoch']
             model.load_state_dict(checkpoint['state_dict'])
             optimizer.load_state_dict(checkpoint['optimizer'])
@@ -439,7 +439,8 @@ def train(train_loader, model, optimizer, epoch, cfg):
         images_trans_l = torch.cat(images_trans_l)
         feas_sim = torch.cat(feas_sim)
 
-        feas_sim = feas_sim.to(f'cuda:{model.device_ids[0]}').to(torch.float32)
+        #feas_sim = feas_sim.to(f'cuda:{model.device_ids[0]}').to(torch.float32)
+        feas_sim=feas_sim.cuda()
             
         model=model.cuda()
         idx_select, gt_cluster_labels = model(feas_sim=feas_sim, scores=scores, epoch=epoch, forward_type="sim2sem")
@@ -559,5 +560,5 @@ def adjust_learning_rate(optimizer, epoch, args):
 
 
 if __name__ == '__main__':
-    os.environ["CUDA_VISIBLE_DEVICES"] = "1,2,3"
+    os.environ["CUDA_VISIBLE_DEVICES"] = "2"
     main()

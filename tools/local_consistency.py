@@ -47,8 +47,7 @@ parser.add_argument(
 parser.add_argument(
     "--embedding",
     default="/git/results/kangqiang/embedding/feas_moco_512_l2.npy",
-    type=str,
-)
+    type=str,)
 
 
 def main():
@@ -124,7 +123,7 @@ def main_worker(gpu, ngpus_per_node, cfg):
                                 world_size=cfg.world_size, rank=cfg.rank)
     # create model
     model = Sim2Sem(**cfg.model)
-    print(model)
+    #print(model)
 
     if cfg.distributed:
         # For multiprocessing distributed, DistributedDataParallel constructor
@@ -153,19 +152,11 @@ def main_worker(gpu, ngpus_per_node, cfg):
         # AllGather implementation (batch shuffle, queue update, etc.) in
         # this code only supports DistributedDataParallel.
         raise NotImplementedError("Only DistributedDataParallel is supported.")
-    if cfg.gpu is None:
-        checkpoint = torch.load(cfg.model.pretrained)
-    else:
-        # Map model to be loaded to specified single gpu.
-        loc = 'cuda:{}'.format(cfg.model.pretrained)
-        checkpoint = torch.load(cfg.resume, map_location=loc)
-        model.load_state_dict(checkpoint['state_dict'])
-        
 
     state_dict = torch.load(cfg.model.pretrained)
     if 'state_dict' in state_dict.keys():
         state_dict = state_dict['state_dict']
-    model.load_state_dict(state_dict)
+    model.load_state_dict(state_dict,False)
     cudnn.benchmark = True
 
     # Data loading code
@@ -176,12 +167,13 @@ def main_worker(gpu, ngpus_per_node, cfg):
 
     num_heads = len(cfg.model.head.multi_heads)
     assert num_heads == 1
-    gt_labels = []
+    #gt_labels = []
     pred_labels = []
     scores_all = []
     # feas_sim = []
 
-    for _, (images, _, labels, idx) in enumerate(val_loader):
+    for _, images in enumerate(val_loader):
+        images=torch.from_numpy(images)
         images = images.to(cfg.gpu, non_blocking=True)
         with torch.no_grad():
             scores = model(images, forward_type="sem")
@@ -194,31 +186,31 @@ def main_worker(gpu, ngpus_per_node, cfg):
         pred_labels.append(pred_idx)
         scores_all.append(scores[0])
 
-        gt_labels.append(labels)
+        #gt_labels.append(labels)
 
-    gt_labels = torch.cat(gt_labels).long().cpu().numpy()
+    #gt_labels = torch.cat(gt_labels).long().cpu().numpy()
     # feas_sim = torch.cat(feas_sim, dim=0)
     feas_sim = torch.from_numpy(np.load(cfg.embedding))
 
     pred_labels = torch.cat(pred_labels).long().cpu().numpy()
     scores = torch.cat(scores_all).cpu()
-
+    """
     try:
         acc = calculate_acc(pred_labels, gt_labels)
     except:
         acc = -1
 
     nmi = calculate_nmi(pred_labels, gt_labels)
-    ari = calculate_ari(pred_labels, gt_labels)
+    ari = calculate_ari(pred_labels, gt_labels)"""
 
     print("ACC: {}, NMI: {}, ARI: {}".format(acc, nmi, ari))
 
     idx_select, labels_select = model(feas_sim=feas_sim, scores=scores, forward_type="local_consistency")
 
-    gt_labels_select = gt_labels[idx_select]
+    """gt_labels_select = gt_labels[idx_select]
 
     acc = calculate_acc(labels_select, gt_labels_select)
-    print('ACC of local consistency: {}, number of samples: {}'.format(acc, len(gt_labels_select)))
+    print('ACC of local consistency: {}, number of samples: {}'.format(acc, len(gt_labels_select)))"""
 
     labels_correct = np.zeros([feas_sim.shape[0]]) - 100
     labels_correct[idx_select] = labels_select
