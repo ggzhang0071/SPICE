@@ -1,13 +1,13 @@
 timestamp=`date +%Y%m%d%H%M%S`
 rm Logs/*.log
  
-python   tools/train_moco.py  --batch-size 512  --epochs 1000  --resume "/git/results/kangqiang/checkpoint_0999.pth.tar" 2>&1 |tee Logs/$timestamp.log
+python -m pdb   tools/train_moco.py  --batch-size 512  --epochs 1000 --multiprocessing_distributed "False" --gpu 0 --resume "/git/results/kangqiang/checkpoint_0999.pth.tar" 2>&1 |tee Logs/$timestamp.log
 
-python tools/pre_compute_embedding.py
+#python tools/pre_compute_embedding.py
 
-python tools/train_self.py  
+#python tools/train_self.py  
 
-python tools/train_self_v2.py  
+#python tools/train_self_v2.py  
 
 #python tools/local_consistency.py
 

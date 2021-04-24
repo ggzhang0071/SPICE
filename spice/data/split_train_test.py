@@ -27,9 +27,14 @@ if __name__ == "__main__":
         os.makedirs(save_dir)
     with open(os.path.join(save_dir,"kangqiang_dataset_train.txt"), 'w+') as f:
         for image_path  in dataset_train:
-            f.write(image_path + '\n')
+            f.write(image_path)
+            f.write("\n")
+        f.close()
     with open(os.path.join(save_dir,"kangqiang_dataset_test.txt"), 'w+') as f:
         for image_path in dataset_test:
-            f.write(image_path + '\n')
+            f.write(image_path)
+            f.write("\n")
+        f.close()
+
     
 

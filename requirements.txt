@@ -8,3 +8,5 @@ tensorboard
 jupyter
 jupyterlab
 matplotlib
+opencv-python
+torchvision=0.4.0

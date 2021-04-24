@@ -51,7 +51,7 @@ parser.add_argument('--epochs', default=1, type=int, metavar='N',
                     help='number of total epochs to run')
 parser.add_argument('--start-epoch', default=0, type=int, metavar='N',
                     help='manual epoch number (useful on restarts)')
-parser.add_argument('--batch-size', default=128, type=int,
+parser.add_argument('--batch_size', default=128, type=int,
                     metavar='N',
                     help='mini-batch size (default: 256), this is the total '
                          'batch size of all GPUs on the current node when '
@@ -80,8 +80,8 @@ parser.add_argument('--dist-backend', default='nccl', type=str,
 parser.add_argument('--seed', default=None, type=int,
                     help='seed for initializing training. ')
 parser.add_argument('--gpu', default=None, type=int,
-                    help='GPU id to use.')
-parser.add_argument('--multiprocessing_distributed', action='store_false', default=True,
+                    help='GPU id to use.') 
+parser.add_argument('--multiprocessing_distributed', action='store_false', default=False,
                     help='Use multi-processing distributed training to launch '
                          'N processes per node, which has N GPUs. This is the '
                          'fastest way to use PyTorch for either single node or '
@@ -120,10 +120,6 @@ def main():
                       'which can slow down your training considerably! '
                       'You may see unexpected behavior when restarting '
                       'from checkpoints.')
-
-    if args.gpu is not None:
-        warnings.warn('You have chosen a specific GPU. This will completely '
-                      'disable data parallelism.')
 
     if args.dist_url == "env://" and args.world_size == -1:
         args.world_size = int(os.environ["WORLD_SIZE"])
@@ -181,8 +177,6 @@ def main_worker(gpu, ngpus_per_node, args):
         # should always set the single device scope, otherwise,
         # DistributedDataParallel will use all available devices.
         if args.gpu is not None:
-            torch.cuda.set_device(args.gpu)
-            model.cuda(args.gpu)
             # When using a single GPU per process and per
             # DistributedDataParallel, we need to divide the batch size
             # ourselves based on the total number of GPUs we have
@@ -191,16 +185,17 @@ def main_worker(gpu, ngpus_per_node, args):
             model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[args.gpu],find_unused_parameters=True)
 
         else:
-            model.cuda()
             # DistributedDataParallel will divide and allocate batch_size to all
             # available GPUs if device_ids are not set
             model = torch.nn.parallel.DistributedDataParallel(model,find_unused_parameters=True)
+            model=model.cuda()
 
     elif args.gpu is not None:
-        torch.cuda.set_device(args.gpu)
-        model = model.cuda(args.gpu)
+        model = torch.nn.parallel.DataParallel(model)
+
+
         # comment out the following line for debugging
-        raise NotImplementedError("Only DistributedDataParallel is supported.")
+        #raise NotImplementedError("Only DistributedDataParallel is supported.")
     else:
         # AllGather implementation (batch shuffle, queue update, etc.) in
         # this code only supports DistributedDataParallel.
@@ -222,7 +217,7 @@ def main_worker(gpu, ngpus_per_node, args):
             else:
                 # Map model to be loaded to specified single gpu.
                 loc = 'cuda:{}'.format(args.gpu)
-                checkpoint = torch.load(args.resume, map_location=loc)
+                checkpoint = torch.load(args.resume)
             args.start_epoch = checkpoint['epoch']
             model.load_state_dict(checkpoint['state_dict'])
             optimizer.load_state_dict(checkpoint['optimizer'])
@@ -282,8 +277,7 @@ def main_worker(gpu, ngpus_per_node, args):
         train_sampler = None
 
     train_loader = torch.utils.data.DataLoader(
-        train_dataset, batch_size=args.batch_size, shuffle=(train_sampler is None),
-        num_workers=args.workers, pin_memory=True, sampler=train_sampler, drop_last=True)
+        train_dataset, batch_size=args.batch_size, shuffle=False,num_workers=args.workers, pin_memory=True,drop_last=True)
 
     for epoch in range(args.start_epoch, args.epochs):
         if args.distributed:
