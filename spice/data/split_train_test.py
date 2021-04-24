@@ -21,7 +21,7 @@ if __name__ == "__main__":
         if file_name.endswith(".jpg"):
             image_list.append(file_name)
 
-    dataset_train,dataset_test = split(image_list,shuffle=True,ratio=0.8)
+    dataset_train,dataset_test = split(image_list,shuffle=True,ratio=0.5)
     save_dir="/git/assets"
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
