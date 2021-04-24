@@ -31,5 +31,4 @@ if __name__ == "__main__":
     with open(os.path.join(save_dir,"kangqiang_dataset_test.txt"), 'w+') as f:
         for image_path in dataset_test:
             f.write(image_path + '\n')
-    
 
